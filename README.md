@@ -27,6 +27,8 @@ CC Usage Monitor 是一款专为 Claude Code 用户设计的浏览器插件，�
 
 ## 🎬 功能演示
 
+![CC Usage Monitor 界面截图](./screenshot.png)
+
 ### 主界面 - Popup
 - 圆形进度指示器显示当日预算使用率
 - 实时倒计时显示当天剩余时间  
