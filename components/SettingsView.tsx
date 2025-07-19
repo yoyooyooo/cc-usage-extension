@@ -5,13 +5,12 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Eye, EyeOff, TestTube, Save, RefreshCw, Clock, Sparkles, RotateCcw } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { Switch } from '@/components/ui/switch';
+import { Eye, EyeOff, TestTube, RefreshCw, Clock, Sparkles, RotateCcw, Bell, BellOff, AlertTriangle } from 'lucide-react';
+import { getWorkTimeDescription } from '../utils/workingTime';
+import { getMatchQualityDescription } from '../utils/fieldMatcher';
+import { useSettingsStore } from '../stores/settingsStore';
 import type { PluginSettings } from '../types';
-import { getSettings, saveSettings } from '../utils/storage';
-import { testApiConnection } from '../utils/api';
-import { validateWorkingHours, getWorkTimeDescription } from '../utils/workingTime';
-import { autoMatchFields, getMatchQualityDescription, type AutoMatchResult } from '../utils/fieldMatcher';
 
 const FIELD_LABELS = {
   monthlyBudget: '月度预算',
@@ -21,194 +20,56 @@ const FIELD_LABELS = {
 } as const;
 
 interface SettingsViewProps {
-  onSaveComplete?: () => void;
+  // 移除了 onSaveComplete 和 onSaveClick，因为现在通过 store 管理
 }
 
-export function SettingsView({ onSaveComplete }: SettingsViewProps) {
-  const [settings, setSettings] = useState<PluginSettings>({
-    apiUrl: '',
-    token: '',
-    workingHours: {
-      start: 9,
-      end: 24,
-    },
-    mapping: {
-      monthlyBudget: '',
-      monthlySpent: '',
-      dailyBudget: '',
-      dailySpent: '',
-    },
-  });
+export const SettingsView = ({ }: SettingsViewProps) => {
+  // 使用 Zustand store 替代所有本地状态
+  const {
+    settings,
+    testing,
+    fieldOptions,
+    hasTestedConnection,
+    autoMatchResult,
+    initializeStore,
+    testConnection,
+    updateMapping,
+    updateWorkingHours,
+    updateNotificationEnabled,
+    updateQueryInterval,
+    updateDailyThreshold,
+    updateMonthlyThreshold,
+    updateAlertThreshold,
+    rematchFields,
+    updateSettings
+  } = useSettingsStore();
 
   const [showToken, setShowToken] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [fieldOptions, setFieldOptions] = useState<string[]>([]);
-  const [hasTestedConnection, setHasTestedConnection] = useState(false);
-  const [autoMatchResult, setAutoMatchResult] = useState<AutoMatchResult>({});
-  const [showAutoMatchInfo, setShowAutoMatchInfo] = useState<Record<string, boolean>>({});
+
+  // 移除本地的 loadSettings 和 handleSave 方法，使用 store 中的方法
 
   useEffect(() => {
-    loadSettings();
-  }, []);
+    initializeStore();
+  }, [initializeStore]);
 
-  const loadSettings = async () => {
-    try {
-      const saved = await getSettings();
-      setSettings(saved);
+  // 移除 useImperativeHandle，不再需要暴露方法给父组件
 
-      // 如果已有配置，检查是否需要显示字段选项
-      if (saved.apiUrl && saved.token && Object.values(saved.mapping).some((v) => v)) {
-        setHasTestedConnection(true);
-      }
-    } catch (error) {
-      toast.error('加载配置失败');
-    }
-  };
+  // 使用 store 中的 testConnection 方法
 
-  const handleTestConnection = async () => {
-    if (!settings.apiUrl || !settings.token) {
-      toast.error('请填写 API URL 和 Token');
-      return;
-    }
+  // 移除本地的更新方法，使用 store 中的方法
 
-    setTesting(true);
-    try {
-      const result = await testApiConnection(settings.apiUrl, settings.token);
+  // 使用 store 中的 rematchFields 方法
 
-      if (result.success && result.fieldKeys) {
-        setFieldOptions(result.fieldKeys);
-        setHasTestedConnection(true);
-        
-        // 执行自动匹配
-        const matchResult = autoMatchFields(result.fieldKeys);
-        setAutoMatchResult(matchResult);
-        
-        // 自动应用高置信度匹配（85%以上）
-        const autoAppliedMatches: string[] = [];
-        Object.entries(matchResult).forEach(([targetField, match]) => {
-          if (match && match.confidence >= 85) {
-            setSettings(prev => ({
-              ...prev,
-              mapping: {
-                ...prev.mapping,
-                [targetField]: match.field
-              }
-            }));
-            autoAppliedMatches.push(`${FIELD_LABELS[targetField as keyof typeof FIELD_LABELS]} → ${match.field}`);
-          }
-        });
-        
-        const matchCount = Object.keys(matchResult).length;
-        const autoAppliedCount = autoAppliedMatches.length;
-        
-        if (matchCount > 0) {
-          toast.success(
-            `连接成功！发现 ${result.fieldKeys.length} 个字段，智能匹配了 ${matchCount} 个字段` +
-            (autoAppliedCount > 0 ? `，自动应用了 ${autoAppliedCount} 个高置信度匹配` : '')
-          );
-        } else {
-          toast.success(`连接成功！发现 ${result.fieldKeys.length} 个可用字段`);
-        }
-      } else {
-        toast.error(result.error || '连接失败');
-        setHasTestedConnection(false);
-        setFieldOptions([]);
-        setAutoMatchResult({});
-      }
-    } catch (error) {
-      toast.error('测试连接时发生错误');
-      setHasTestedConnection(false);
-      setFieldOptions([]);
-      setAutoMatchResult({});
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!settings.apiUrl || !settings.token) {
-      toast.error('请填写 API URL 和 Token');
-      return;
-    }
-
-    if (!hasTestedConnection) {
-      toast.error('请先测试连接');
-      return;
-    }
-
-    const requiredMappings = Object.values(settings.mapping);
-    if (requiredMappings.some((v) => !v)) {
-      toast.error('请为所有字段选择映射');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await saveSettings(settings);
-      toast.success('配置保存成功！');
-      // 延迟调用回调，让用户能看到成功提示
-      setTimeout(() => {
-        onSaveComplete?.();
-      }, 1000);
-    } catch (error) {
-      toast.error('保存配置失败');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const updateMapping = (field: keyof PluginSettings['mapping'], value: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      mapping: {
-        ...prev.mapping,
-        [field]: value,
-      },
-    }));
-  };
-
-  const updateWorkingHours = (hours: number[]) => {
-    if (hours.length === 2) {
-      const [start, end] = hours;
-      if (validateWorkingHours(start, end)) {
-        setSettings((prev) => ({
-          ...prev,
-          workingHours: { start, end },
-        }));
-      }
-    }
-  };
-
-  const handleRematch = () => {
-    if (fieldOptions.length === 0) {
-      toast.error('请先测试 API 连接');
-      return;
-    }
-
-    const matchResult = autoMatchFields(fieldOptions);
-    setAutoMatchResult(matchResult);
-
-    // 应用所有匹配结果（不管置信度）
-    Object.entries(matchResult).forEach(([targetField, match]) => {
-      if (match) {
-        setSettings(prev => ({
-          ...prev,
-          mapping: {
-            ...prev.mapping,
-            [targetField]: match.field
-          }
-        }));
-      }
-    });
-
-    const matchCount = Object.keys(matchResult).length;
-    if (matchCount > 0) {
-      toast.success(`重新匹配完成！匹配了 ${matchCount} 个字段`);
-    } else {
-      toast('未找到合适的字段匹配');
-    }
-  };
+  // 如果 settings 还未加载完成，显示加载状态
+  if (!settings) {
+    return (
+      <div className="p-4 space-y-4 bg-gray-900">
+        <div className="flex items-center justify-center h-32">
+          <div className="text-gray-400">加载配置中...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-4 bg-gray-900">
@@ -227,7 +88,7 @@ export function SettingsView({ onSaveComplete }: SettingsViewProps) {
               id="apiUrl"
               placeholder="https://api.example.com/v1/usage"
               value={settings.apiUrl}
-              onChange={(e) => setSettings((prev) => ({ ...prev, apiUrl: e.target.value }))}
+              onChange={(e) => updateSettings({ apiUrl: e.target.value })}
               className="text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
             />
           </div>
@@ -242,7 +103,7 @@ export function SettingsView({ onSaveComplete }: SettingsViewProps) {
                 type={showToken ? 'text' : 'password'}
                 placeholder="请输入您的 API Token"
                 value={settings.token}
-                onChange={(e) => setSettings((prev) => ({ ...prev, token: e.target.value }))}
+                onChange={(e) => updateSettings({ token: e.target.value })}
                 className="pr-10 text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
               />
               <Button
@@ -258,7 +119,7 @@ export function SettingsView({ onSaveComplete }: SettingsViewProps) {
           </div>
 
           <Button
-            onClick={handleTestConnection}
+            onClick={testConnection}
             disabled={testing || !settings.apiUrl || !settings.token}
             className="w-full bg-blue-600 hover:bg-blue-700"
             size="sm"
@@ -321,6 +182,218 @@ export function SettingsView({ onSaveComplete }: SettingsViewProps) {
         </CardContent>
       </Card>
 
+      {/* 智能通知配置 */}
+      <Card className="bg-gray-800 border-gray-700">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base text-white flex items-center">
+            {settings.notifications.enabled ? (
+              <Bell className="mr-2 h-4 w-4 text-blue-400" />
+            ) : (
+              <BellOff className="mr-2 h-4 w-4 text-gray-500" />
+            )}
+            智能通知设置
+          </CardTitle>
+          <CardDescription className="text-sm text-gray-400">
+            配置预算警告通知，当使用量达到阈值时自动提醒
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* 通知开关 */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label className="text-sm text-gray-300">启用通知</Label>
+              <p className="text-xs text-gray-500">开启后将在预算使用达到阈值时发送桌面通知</p>
+            </div>
+            <Switch
+              checked={settings.notifications.enabled}
+              onCheckedChange={updateNotificationEnabled}
+            />
+          </div>
+
+          {/* 通知详细配置 - 仅在开启通知时显示 */}
+          {settings.notifications.enabled && (
+            <>
+              {/* 查询间隔配置 */}
+              <div className="space-y-3">
+                <Label className="text-sm text-gray-300">
+                  查询间隔: {settings.notifications.queryInterval} 分钟
+                </Label>
+                <div className="px-2">
+                  <Slider
+                    value={[settings.notifications.queryInterval]}
+                    onValueChange={updateQueryInterval}
+                    min={1}
+                    max={60}
+                    step={1}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-gray-400 px-2">
+                  <span>1分钟</span>
+                  <span>15分钟</span>
+                  <span>30分钟</span>
+                  <span>60分钟</span>
+                </div>
+              </div>
+
+              {/* 日度预算阈值 */}
+              <div className="space-y-3">
+                <Label className="text-sm text-gray-300">
+                  日度预算警告阈值: {settings.notifications.thresholds.dailyBudget}%
+                </Label>
+                <div className="px-2">
+                  <Slider
+                    value={[settings.notifications.thresholds.dailyBudget]}
+                    onValueChange={updateDailyThreshold}
+                    min={50}
+                    max={95}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-gray-400 px-2">
+                  <span>50%</span>
+                  <span>70%</span>
+                  <span>85%</span>
+                  <span>95%</span>
+                </div>
+              </div>
+
+              {/* 月度预算阈值 */}
+              <div className="space-y-3">
+                <Label className="text-sm text-gray-300">
+                  月度预算警告阈值: {settings.notifications.thresholds.monthlyBudget}%
+                </Label>
+                <div className="px-2">
+                  <Slider
+                    value={[settings.notifications.thresholds.monthlyBudget]}
+                    onValueChange={updateMonthlyThreshold}
+                    min={50}
+                    max={95}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-gray-400 px-2">
+                  <span>50%</span>
+                  <span>70%</span>
+                  <span>85%</span>
+                  <span>95%</span>
+                </div>
+              </div>
+
+              {/* 通知说明 */}
+              <div className="text-xs text-gray-500 bg-gray-700 p-2 rounded">
+                <div className="mb-1">💡 通知说明：</div>
+                <div>• 通知将在预算使用率首次达到阈值时发送</div>
+                <div>• 每种通知类型30分钟内最多发送一次</div>
+                <div>• 每日/月度开始时会重置通知状态</div>
+                <div>• 请确保浏览器允许此扩展发送通知</div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 警示阈值配置 */}
+      <Card className="bg-gray-800 border-gray-700">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base text-white flex items-center">
+            <AlertTriangle className="mr-2 h-4 w-4 text-yellow-400" />
+            警示阈值设置
+          </CardTitle>
+          <CardDescription className="text-sm text-gray-400">
+            自定义预算警示级别的触发阈值，控制何时显示不同级别的警告
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* 危险阈值 */}
+          <div className="space-y-3">
+            <Label className="text-sm text-gray-300 flex items-center">
+              <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+              危险阈值: {settings.alertThresholds?.danger?.toFixed(1)}x
+            </Label>
+            <div className="px-2">
+              <Slider
+                value={[settings.alertThresholds?.danger || 1.5]}
+                onValueChange={(value) => updateAlertThreshold('danger', value)}
+                min={1.3}
+                max={2.0}
+                step={0.1}
+                className="w-full"
+              />
+            </div>
+            <p className="text-xs text-gray-500">当消费速率超过建议速率的此倍数时，显示红色危险警告</p>
+          </div>
+
+          {/* 警告阈值 */}
+          <div className="space-y-3">
+            <Label className="text-sm text-gray-300 flex items-center">
+              <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+              警告阈值: {settings.alertThresholds?.warning?.toFixed(1)}x
+            </Label>
+            <div className="px-2">
+              <Slider
+                value={[settings.alertThresholds?.warning || 1.2]}
+                onValueChange={(value) => updateAlertThreshold('warning', value)}
+                min={1.1}
+                max={1.5}
+                step={0.1}
+                className="w-full"
+              />
+            </div>
+            <p className="text-xs text-gray-500">当消费速率超过建议速率的此倍数时，显示橙色警告</p>
+          </div>
+
+          {/* 谨慎阈值 */}
+          <div className="space-y-3">
+            <Label className="text-sm text-gray-300 flex items-center">
+              <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+              谨慎阈值: {settings.alertThresholds?.caution?.toFixed(1)}x
+            </Label>
+            <div className="px-2">
+              <Slider
+                value={[settings.alertThresholds?.caution || 1.0]}
+                onValueChange={(value) => updateAlertThreshold('caution', value)}
+                min={0.9}
+                max={1.2}
+                step={0.1}
+                className="w-full"
+              />
+            </div>
+            <p className="text-xs text-gray-500">当消费速率超过建议速率的此倍数时，显示黄色谨慎提醒</p>
+          </div>
+
+          {/* 正常范围下限 */}
+          <div className="space-y-3">
+            <Label className="text-sm text-gray-300 flex items-center">
+              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+              正常范围下限: {settings.alertThresholds?.normalMin?.toFixed(1)}x
+            </Label>
+            <div className="px-2">
+              <Slider
+                value={[settings.alertThresholds?.normalMin || 0.8]}
+                onValueChange={(value) => updateAlertThreshold('normalMin', value)}
+                min={0.5}
+                max={0.9}
+                step={0.1}
+                className="w-full"
+              />
+            </div>
+            <p className="text-xs text-gray-500">当消费速率高于建议速率的此倍数时，显示绿色正常状态</p>
+          </div>
+
+          {/* 阈值说明 */}
+          <div className="text-xs text-gray-500 bg-gray-700 p-2 rounded">
+            <div className="mb-1">💡 阈值说明：</div>
+            <div>• 速率比值 = 当前消费速率 ÷ 建议消费速率</div>
+            <div>• 比值越高表示消费越快，需要更严格控制</div>
+            <div>• 比值低于正常下限时显示蓝色保守状态</div>
+            <div>• 调整阈值会实时影响警示级别的判断</div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 字段映射配置 */}
       {hasTestedConnection && fieldOptions.length > 0 && (
         <Card className="bg-gray-800 border-gray-700">
@@ -331,7 +404,7 @@ export function SettingsView({ onSaveComplete }: SettingsViewProps) {
                 <CardDescription className="text-sm text-gray-400">为每个显示槽位选择对应的 API 响应字段</CardDescription>
               </div>
               <Button
-                onClick={handleRematch}
+                onClick={rematchFields}
                 variant="outline"
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
@@ -393,23 +466,8 @@ export function SettingsView({ onSaveComplete }: SettingsViewProps) {
           </CardContent>
         </Card>
       )}
-
-      {/* 保存按钮 */}
-      {hasTestedConnection && (
-        <Button onClick={handleSave} disabled={saving} className="w-full bg-green-600 hover:bg-green-700" size="sm">
-          {saving ? (
-            <>
-              <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
-              保存中...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-3 w-3" />
-              保存配置
-            </>
-          )}
-        </Button>
-      )}
     </div>
   );
-}
+};
+
+SettingsView.displayName = 'SettingsView';

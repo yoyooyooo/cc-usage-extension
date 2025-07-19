@@ -11,8 +11,8 @@ export default defineConfig({
   manifest: {
     name: 'CC Usage Monitor',
     description: 'Claude Code 使用情况查询插件 - 智能预算管理，实时消费追踪',
-    version: '1.0.2',
-    permissions: ['storage', 'activeTab'],
+    version: '1.1.0',
+    permissions: ['storage', 'activeTab', 'notifications', 'alarms'],
     host_permissions: ['http://*/*', 'https://*/*'],
     action: {
       default_title: 'CC Usage Monitor',

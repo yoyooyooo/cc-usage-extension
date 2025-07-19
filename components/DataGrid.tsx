@@ -49,7 +49,7 @@ export function DataGrid({ settings, data, loading = false }: DataGridProps) {
           <CircularProgress percentage={usagePercentage} size={120} strokeWidth={10}>
             <div className="text-center">
               <div className="text-2xl font-bold text-white transition-all duration-500">
-                {loading ? '...' : `${Math.round(usagePercentage)}%`}
+                {`${Math.round(usagePercentage)}%`}
               </div>
               <div className="text-xs text-gray-400 uppercase tracking-wide mt-1">当日开销</div>
               <div className="flex items-center justify-center mt-1">
@@ -68,6 +68,7 @@ export function DataGrid({ settings, data, loading = false }: DataGridProps) {
             dailyBudget={dailyBudget}
             dailySpent={dailySpent}
             workingHours={settings.workingHours}
+            alertThresholds={settings.alertThresholds}
             loading={loading}
           />
         </div>
@@ -95,7 +96,7 @@ export function DataGrid({ settings, data, loading = false }: DataGridProps) {
             <div className="flex justify-between items-center">
               <span className="text-gray-400 text-xs">已花费</span>
               <span className="text-white font-semibold text-sm transition-all duration-300">
-                {loading ? '...' : `$${dailySpent.toFixed(2)}`}
+                {`$${dailySpent.toFixed(2)}`}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -105,7 +106,7 @@ export function DataGrid({ settings, data, loading = false }: DataGridProps) {
               >
                 预算
               </span>
-              <span className="text-white font-semibold text-sm">{loading ? '...' : `$${dailyBudget.toFixed(2)}`}</span>
+              <span className="text-white font-semibold text-sm">{`$${dailyBudget.toFixed(2)}`}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-400 text-xs">使用率</span>
@@ -114,7 +115,7 @@ export function DataGrid({ settings, data, loading = false }: DataGridProps) {
                   usagePercentage > 80 ? 'text-red-400' : usagePercentage > 60 ? 'text-yellow-400' : 'text-green-400'
                 }`}
               >
-                {loading ? '...' : `${usagePercentage.toFixed(1)}%`}
+                {`${usagePercentage.toFixed(1)}%`}
               </span>
             </div>
           </div>
@@ -135,13 +136,13 @@ export function DataGrid({ settings, data, loading = false }: DataGridProps) {
             <div className="flex justify-between items-center">
               <span className="text-gray-400 text-xs">已花费</span>
               <span className="text-white font-semibold text-sm transition-all duration-300">
-                {loading ? '...' : `$${monthlySpent.toFixed(2)}`}
+                {`$${monthlySpent.toFixed(2)}`}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-400 text-xs">预算</span>
               <span className="text-white font-semibold text-sm">
-                {loading ? '...' : `$${monthlyBudget.toFixed(2)}`}
+                {`$${monthlyBudget.toFixed(2)}`}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -155,7 +156,7 @@ export function DataGrid({ settings, data, loading = false }: DataGridProps) {
                     : 'text-green-400'
                 }`}
               >
-                {loading ? '...' : `${monthlyUsagePercentage.toFixed(1)}%`}
+                {`${monthlyUsagePercentage.toFixed(1)}%`}
               </span>
             </div>
           </div>

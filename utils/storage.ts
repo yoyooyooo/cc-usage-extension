@@ -1,56 +1,12 @@
-import type { PluginSettings, CachedData } from '../types';
+import type { CachedData, HistoricalData, HistoricalDataPoint } from '../types';
 
 const STORAGE_KEYS = {
-  SETTINGS: 'plugin_settings',
   CACHE: 'api_cache',
+  NOTIFICATION_STATUS: 'notification_status',
+  HISTORICAL_DATA: 'historical_data',
 } as const;
 
-export const defaultSettings: PluginSettings = {
-  apiUrl: '',
-  token: '',
-  workingHours: {
-    start: 9,
-    end: 24,
-  },
-  mapping: {
-    monthlyBudget: '',
-    monthlySpent: '',
-    dailyBudget: '',
-    dailySpent: '',
-  },
-};
-
-export async function getSettings(): Promise<PluginSettings> {
-  try {
-    const result = await chrome.storage.sync.get(STORAGE_KEYS.SETTINGS);
-    const saved = result[STORAGE_KEYS.SETTINGS];
-    
-    if (!saved) {
-      return defaultSettings;
-    }
-    
-    // 确保向后兼容：如果现有设置没有 workingHours，则添加默认值
-    const settings: PluginSettings = {
-      ...defaultSettings,
-      ...saved,
-      workingHours: saved.workingHours || defaultSettings.workingHours,
-    };
-    
-    return settings;
-  } catch (error) {
-    console.error('Error loading settings:', error);
-    return defaultSettings;
-  }
-}
-
-export async function saveSettings(settings: PluginSettings): Promise<void> {
-  try {
-    await chrome.storage.sync.set({ [STORAGE_KEYS.SETTINGS]: settings });
-  } catch (error) {
-    console.error('Error saving settings:', error);
-    throw error;
-  }
-}
+// 注意：设置相关的函数已移至 stores/settingsStore.ts 中统一管理
 
 export async function getCachedData(): Promise<CachedData | null> {
   try {
@@ -59,10 +15,10 @@ export async function getCachedData(): Promise<CachedData | null> {
     
     if (!cached) return null;
     
-    // 检查缓存是否过期（60秒）
+    // 延长缓存时间到 5 分钟，减少不必要的 API 请求
     const now = Date.now();
     const cacheAge = now - cached.timestamp;
-    const CACHE_DURATION = 60 * 1000; // 60秒
+    const CACHE_DURATION = 5 * 60 * 1000; // 5分钟
     
     if (cacheAge > CACHE_DURATION) {
       // 清除过期缓存
@@ -95,5 +51,140 @@ export async function clearCache(): Promise<void> {
     await chrome.storage.sync.remove(STORAGE_KEYS.CACHE);
   } catch (error) {
     console.error('Error clearing cache:', error);
+  }
+}
+
+// 通知状态管理
+export interface NotificationStatus {
+  dailyBudget: boolean;
+  monthlyBudget: boolean;
+  lastNotificationTime: number;
+}
+
+export async function getNotificationStatus(): Promise<NotificationStatus> {
+  try {
+    const result = await chrome.storage.sync.get(STORAGE_KEYS.NOTIFICATION_STATUS);
+    const status = result[STORAGE_KEYS.NOTIFICATION_STATUS];
+    
+    if (!status) {
+      return {
+        dailyBudget: false,
+        monthlyBudget: false,
+        lastNotificationTime: 0,
+      };
+    }
+    
+    return status;
+  } catch (error) {
+    console.error('Error getting notification status:', error);
+    return {
+      dailyBudget: false,
+      monthlyBudget: false,
+      lastNotificationTime: 0,
+    };
+  }
+}
+
+export async function setNotificationStatus(status: NotificationStatus): Promise<void> {
+  try {
+    await chrome.storage.sync.set({ [STORAGE_KEYS.NOTIFICATION_STATUS]: status });
+  } catch (error) {
+    console.error('Error setting notification status:', error);
+    throw error;
+  }
+}
+
+export async function resetNotificationStatus(): Promise<void> {
+  try {
+    await chrome.storage.sync.remove(STORAGE_KEYS.NOTIFICATION_STATUS);
+  } catch (error) {
+    console.error('Error resetting notification status:', error);
+  }
+}
+
+// 历史数据管理
+const MAX_HISTORICAL_DAYS = 30; // 保留最近30天的数据
+const MAX_DATA_POINTS_PER_DAY = 24; // 每天最多保留24个数据点（每小时一个）
+
+export async function getHistoricalData(): Promise<HistoricalData> {
+  try {
+    const result = await chrome.storage.local.get(STORAGE_KEYS.HISTORICAL_DATA);
+    const data = result[STORAGE_KEYS.HISTORICAL_DATA];
+    
+    if (!data) {
+      return {
+        data: [],
+        lastUpdated: 0,
+      };
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error getting historical data:', error);
+    return {
+      data: [],
+      lastUpdated: 0,
+    };
+  }
+}
+
+export async function addHistoricalDataPoint(point: Omit<HistoricalDataPoint, 'timestamp'>): Promise<void> {
+  try {
+    const historical = await getHistoricalData();
+    const now = Date.now();
+    
+    // 检查是否在同一小时内已经有数据点
+    const oneHourAgo = now - (60 * 60 * 1000);
+    const recentPoint = historical.data.find(p => p.timestamp > oneHourAgo);
+    
+    if (recentPoint) {
+      // 更新现有数据点而不是添加新的
+      recentPoint.dailyBudget = point.dailyBudget;
+      recentPoint.dailySpent = point.dailySpent;
+      recentPoint.monthlyBudget = point.monthlyBudget;
+      recentPoint.monthlySpent = point.monthlySpent;
+    } else {
+      // 添加新数据点
+      historical.data.push({
+        ...point,
+        timestamp: now,
+      });
+    }
+    
+    // 清理旧数据
+    const cutoffTime = now - (MAX_HISTORICAL_DAYS * 24 * 60 * 60 * 1000);
+    historical.data = historical.data.filter(p => p.timestamp > cutoffTime);
+    
+    // 按时间戳排序
+    historical.data.sort((a, b) => a.timestamp - b.timestamp);
+    
+    // 更新最后更新时间
+    historical.lastUpdated = now;
+    
+    // 保存到 storage.local（容量更大）
+    await chrome.storage.local.set({ [STORAGE_KEYS.HISTORICAL_DATA]: historical });
+  } catch (error) {
+    console.error('Error adding historical data point:', error);
+    throw error;
+  }
+}
+
+export async function clearHistoricalData(): Promise<void> {
+  try {
+    await chrome.storage.local.remove(STORAGE_KEYS.HISTORICAL_DATA);
+  } catch (error) {
+    console.error('Error clearing historical data:', error);
+  }
+}
+
+export async function getHistoricalDataForPeriod(days: number): Promise<HistoricalDataPoint[]> {
+  try {
+    const historical = await getHistoricalData();
+    const cutoffTime = Date.now() - (days * 24 * 60 * 60 * 1000);
+    
+    return historical.data.filter(p => p.timestamp > cutoffTime);
+  } catch (error) {
+    console.error('Error getting historical data for period:', error);
+    return [];
   }
 }

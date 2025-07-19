@@ -2,7 +2,7 @@
   "name": "cc-usage-extension",
   "description": "Claude Code 使用情况查询插件",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -26,8 +26,10 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hot-toast": "^2.5.2",
+    "recharts": "2.15.4",
     "tailwind-merge": "^3.3.1",
-    "zod": "^4.0.5"
+    "zod": "^4.0.5",
+    "zustand": "^5.0.6"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.11",

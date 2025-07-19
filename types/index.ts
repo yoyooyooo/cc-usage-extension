@@ -11,6 +11,20 @@ export interface PluginSettings {
     dailyBudget: string;
     dailySpent: string;
   };
+  notifications: {
+    enabled: boolean;
+    queryInterval: number; // 分钟，默认5
+    thresholds: {
+      dailyBudget: number;   // 百分比，默认80
+      monthlyBudget: number; // 百分比，默认90
+    };
+  };
+  alertThresholds?: {
+    danger: number;      // 危险阈值，默认1.5
+    warning: number;     // 警告阈值，默认1.2
+    caution: number;     // 谨慎阈值，默认1.0
+    normalMin: number;   // 正常范围最小值，默认0.8
+  };
 }
 
 export interface ApiResponse {
@@ -33,4 +47,18 @@ export interface ApiTestResult {
   data?: ApiResponse;
   error?: string;
   fieldKeys?: string[];
+}
+
+// 历史数据相关类型
+export interface HistoricalDataPoint {
+  timestamp: number;
+  dailyBudget: number;
+  dailySpent: number;
+  monthlyBudget: number;
+  monthlySpent: number;
+}
+
+export interface HistoricalData {
+  data: HistoricalDataPoint[];
+  lastUpdated: number;
 }

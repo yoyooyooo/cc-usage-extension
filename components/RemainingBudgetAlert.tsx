@@ -7,6 +7,7 @@ interface RemainingBudgetAlertProps {
   dailyBudget: number;
   dailySpent: number;
   workingHours: PluginSettings['workingHours'];
+  alertThresholds?: PluginSettings['alertThresholds'];
   loading?: boolean;
 }
 
@@ -34,8 +35,14 @@ function getAlertConfig(
   currentRate: number, 
   requiredRate: number, 
   remainingBudget: number,
-  workStatus: WorkingTimeStatus
+  workStatus: WorkingTimeStatus,
+  thresholds?: PluginSettings['alertThresholds']
 ): AlertConfig {
+  // 使用自定义阈值或默认值
+  const dangerThreshold = thresholds?.danger || 1.5;
+  const warningThreshold = thresholds?.warning || 1.2;
+  const cautionThreshold = thresholds?.caution || 1.0;
+  const normalMinThreshold = thresholds?.normalMin || 0.8;
   // 工作时间外的状态
   if (workStatus.isBeforeWork) {
     return {
@@ -77,7 +84,7 @@ function getAlertConfig(
   // 工作时间内的速率比较
   const ratio = requiredRate > 0 ? currentRate / requiredRate : 0;
   
-  if (ratio > 1.5) {
+  if (ratio > dangerThreshold) {
     return {
       level: 'danger',
       color: 'text-red-400',
@@ -89,7 +96,7 @@ function getAlertConfig(
     };
   }
   
-  if (ratio > 1.2) {
+  if (ratio > warningThreshold) {
     return {
       level: 'warning',
       color: 'text-orange-400',
@@ -101,7 +108,7 @@ function getAlertConfig(
     };
   }
   
-  if (ratio > 1.0) {
+  if (ratio > cautionThreshold) {
     return {
       level: 'caution',
       color: 'text-yellow-400',
@@ -113,7 +120,7 @@ function getAlertConfig(
     };
   }
   
-  if (ratio >= 0.8) {
+  if (ratio >= normalMinThreshold) {
     return {
       level: 'normal',
       color: 'text-green-400',
@@ -140,25 +147,15 @@ export function RemainingBudgetAlert({
   dailyBudget, 
   dailySpent, 
   workingHours, 
+  alertThresholds,
   loading = false 
 }: RemainingBudgetAlertProps) {
-  if (loading) {
-    return (
-      <div className="bg-gray-800 rounded-lg p-3 text-center">
-        <div className="animate-pulse">
-          <div className="h-3 bg-gray-700 rounded mb-2"></div>
-          <div className="h-4 bg-gray-700 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
   const remainingBudget = dailyBudget - dailySpent;
   const workStatus = getWorkingTimeStatus(workingHours.start, workingHours.end);
   const currentRate = getCurrentBurnRate(dailySpent, workStatus.elapsedWorkHours);
   const requiredRate = getRequiredBurnRate(remainingBudget, workStatus.remainingWorkHours);
   
-  const config = getAlertConfig(currentRate, requiredRate, remainingBudget, workStatus);
+  const config = getAlertConfig(currentRate, requiredRate, remainingBudget, workStatus, alertThresholds);
   const IconComponent = config.icon;
 
   return (

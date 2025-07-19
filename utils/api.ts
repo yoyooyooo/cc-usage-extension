@@ -1,6 +1,100 @@
 import type { PluginSettings, ApiResponse, ApiTestResult } from '../types';
 import { getCachedData, setCachedData } from './storage';
 
+// 请求管理器，防止重复请求和实现请求去重
+class ApiRequestManager {
+  private pendingRequests = new Map<string, Promise<ApiResponse>>();
+  private abortControllers = new Map<string, AbortController>();
+
+  private generateRequestKey(settings: PluginSettings): string {
+    return `${settings.apiUrl}_${settings.token}`;
+  }
+
+  async fetchApiData(settings: PluginSettings): Promise<ApiResponse> {
+    const requestKey = this.generateRequestKey(settings);
+
+    // 如果有相同的请求正在进行，直接返回该 Promise
+    if (this.pendingRequests.has(requestKey)) {
+      return this.pendingRequests.get(requestKey)!;
+    }
+
+    // 取消之前的同类请求
+    if (this.abortControllers.has(requestKey)) {
+      this.abortControllers.get(requestKey)!.abort();
+    }
+
+    // 创建新的 AbortController
+    const abortController = new AbortController();
+    this.abortControllers.set(requestKey, abortController);
+
+    // 首先尝试从缓存获取数据
+    const cached = await getCachedData();
+    if (cached) {
+      this.cleanup(requestKey);
+      return cached.data;
+    }
+
+    // 创建新的请求 Promise
+    const requestPromise = this.performApiRequest(settings, abortController.signal);
+    this.pendingRequests.set(requestKey, requestPromise);
+
+    try {
+      const result = await requestPromise;
+      return result;
+    } finally {
+      // 请求完成后清理
+      this.cleanup(requestKey);
+    }
+  }
+
+  private async performApiRequest(settings: PluginSettings, signal: AbortSignal): Promise<ApiResponse> {
+    if (!settings.apiUrl || !settings.token) {
+      throw new Error('API URL 或 Token 未配置');
+    }
+
+    const response = await fetch(settings.apiUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${settings.token}`,
+        'Content-Type': 'application/json',
+      },
+      signal, // 传入 AbortSignal
+    });
+
+    if (signal.aborted) {
+      throw new Error('请求已取消');
+    }
+
+    if (!response.ok) {
+      throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // 缓存数据
+    await setCachedData(data);
+    
+    return data;
+  }
+
+  private cleanup(requestKey: string): void {
+    this.pendingRequests.delete(requestKey);
+    this.abortControllers.delete(requestKey);
+  }
+
+  // 清理所有pending请求
+  abortAllRequests(): void {
+    for (const controller of this.abortControllers.values()) {
+      controller.abort();
+    }
+    this.pendingRequests.clear();
+    this.abortControllers.clear();
+  }
+}
+
+// 创建全局实例
+const apiRequestManager = new ApiRequestManager();
+
 export async function testApiConnection(apiUrl: string, token: string): Promise<ApiTestResult> {
   try {
     if (!apiUrl || !token) {
@@ -44,35 +138,7 @@ export async function testApiConnection(apiUrl: string, token: string): Promise<
 }
 
 export async function fetchApiData(settings: PluginSettings): Promise<ApiResponse> {
-  // 首先尝试从缓存获取数据
-  const cached = await getCachedData();
-  if (cached) {
-    return cached.data;
-  }
-
-  // 缓存未命中，请求新数据
-  if (!settings.apiUrl || !settings.token) {
-    throw new Error('API URL 或 Token 未配置');
-  }
-
-  const response = await fetch(settings.apiUrl, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${settings.token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  
-  // 缓存数据
-  await setCachedData(data);
-  
-  return data;
+  return apiRequestManager.fetchApiData(settings);
 }
 
 export function extractDataValue(data: ApiResponse, fieldPath: string): number | string {
