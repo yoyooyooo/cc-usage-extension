@@ -5,7 +5,7 @@
 ![Logo](./public/icon/128.png)
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.7.0-green.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)]()
 [![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-red.svg)]()
 [![Firefox Add-ons](https://img.shields.io/badge/Firefox-Add--on-orange.svg)]()
 
@@ -222,25 +222,15 @@ cc-usage/
 
 ## 📋 更新日志
 
-### v0.7.0 (当前版本)
-- ✨ 添加智能字段匹配功能
-- 🔍 置信度评估和视觉反馈
-- 🎨 优化设置页面 UI
-
-### v0.6.0  
-- ⚠️ 智能预算警示系统
-- ⏰ 工作时间配置功能
-- 📊 消费速率计算
-
-### v0.5.0
-- 🎯 圆形进度指示器
-- ⏱️ 实时倒计时功能
-- 💎 现代化深色主题
-
-### v0.4.0
-- 🎨 现代化 UI 设计
-- 🌙 深色主题支持
-- 📱 响应式布局
+### v1.0.0 (当前版本)
+- ✨ 智能字段匹配功能 - 自动识别 API 响应中的预算和花费字段
+- 🔍 置信度评估和视觉反馈 - 提供匹配原因说明
+- 🎨 现代化深色主题设计 - 优雅的用户界面
+- 🎯 圆形进度指示器 - 直观显示使用率
+- ⏱️ 实时倒计时功能 - 当天剩余时间
+- ⚠️ 智能预算警示系统 - 6级警示提醒
+- ⏰ 工作时间配置功能 - 精准的消费速率计算
+- 📊 数据可视化卡片 - 清晰的预算展示
 
 ## 🐛 问题反馈
 

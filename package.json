@@ -2,7 +2,7 @@
   "name": "cc-usage-extension",
   "description": "Claude Code 使用情况查询插件",
   "private": true,
-  "version": "0.7.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
