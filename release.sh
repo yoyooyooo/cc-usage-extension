@@ -3,25 +3,64 @@
 # CC Usage Extension - 快速 Release 脚本
 # 用法: ./release.sh [版本号] [--manual]
 # 例如: ./release.sh 1.0.1
+# 无参数: ./release.sh (自动递增 patch 版本 +0.0.1)
 # 手动模式: ./release.sh 1.0.1 --manual
 
 set -e  # 遇到错误立即退出
 
-# 检查是否提供了版本号
-if [ $# -eq 0 ]; then
-    echo "❌ 请提供版本号"
-    echo "用法: ./release.sh [版本号] [--manual]"
-    echo "例如: ./release.sh 1.0.1"
-    echo "手动模式: ./release.sh 1.0.1 --manual"
-    exit 1
-fi
+# 自动递增版本号函数
+auto_increment_version() {
+    local current_version=$(grep '"version"' package.json | sed 's/.*"version": "\([^"]*\)".*/\1/')
+    if [[ ! $current_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "❌ package.json 中的版本号格式错误: $current_version"
+        exit 1
+    fi
+    
+    local major=$(echo $current_version | cut -d. -f1)
+    local minor=$(echo $current_version | cut -d. -f2)
+    local patch=$(echo $current_version | cut -d. -f3)
+    
+    patch=$((patch + 1))
+    echo "$major.$minor.$patch"
+}
 
-VERSION=$1
+# 处理参数
+VERSION=""
 MANUAL_MODE=false
 
-# 检查是否为手动模式
-if [ "$2" = "--manual" ]; then
-    MANUAL_MODE=true
+if [ $# -eq 0 ]; then
+    # 无参数时自动递增版本
+    VERSION=$(auto_increment_version)
+    echo "🔄 自动递增版本号到: $VERSION"
+elif [ $# -eq 1 ]; then
+    if [ "$1" = "--manual" ]; then
+        VERSION=$(auto_increment_version)
+        MANUAL_MODE=true
+        echo "🔄 自动递增版本号到: $VERSION (手动模式)"
+    else
+        VERSION=$1
+        echo "📝 使用指定版本号: $VERSION"
+    fi
+elif [ $# -eq 2 ]; then
+    VERSION=$1
+    if [ "$2" = "--manual" ]; then
+        MANUAL_MODE=true
+        echo "📝 使用指定版本号: $VERSION (手动模式)"
+    else
+        echo "❌ 参数错误"
+        echo "用法: ./release.sh [版本号] [--manual]"
+        echo "例如: ./release.sh 1.0.1"
+        echo "自动递增: ./release.sh"
+        echo "手动模式: ./release.sh 1.0.1 --manual"
+        exit 1
+    fi
+else
+    echo "❌ 参数过多"
+    echo "用法: ./release.sh [版本号] [--manual]"
+    echo "例如: ./release.sh 1.0.1"
+    echo "自动递增: ./release.sh"
+    echo "手动模式: ./release.sh 1.0.1 --manual"
+    exit 1
 fi
 
 # 检查版本号格式
@@ -66,6 +105,10 @@ git pull origin main
 echo "📝 更新 package.json 版本号到 $VERSION..."
 sed -i '' "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" package.json
 
+# 更新 wxt.config.ts 版本号
+echo "📝 更新 wxt.config.ts 版本号到 $VERSION..."
+sed -i '' "s/version: '[^']*'/version: '$VERSION'/" wxt.config.ts
+
 # 检查类型
 echo "🔍 检查 TypeScript 类型..."
 npm run compile
@@ -84,7 +127,7 @@ npm run zip:firefox
 
 # 提交版本更新
 echo "📝 提交版本更新..."
-git add package.json
+git add package.json wxt.config.ts
 git commit -m "feat: 更新版本至 v$VERSION"
 
 # 创建并推送标签
