@@ -1,128 +1,83 @@
 ---
-description: '完整的发布自动化流程，包含版本管理、构建、测试和 GitHub Release 创建'
+description: '一键发布自动化：集成脚本执行 + AI 生成 changelog'
 allowed-tools: ['Bash', 'Read', 'Edit']
 ---
 
 ## Context
 
-- **项目类型**: Browser Extension (WXT + React)
-- **版本管理**: Git tags (v1.0.0 格式)
-- **构建目标**: Chrome + Firefox 扩展
-- **发布平台**: GitHub Releases
-- **用户输入**: $ARGUMENTS (可选：版本号, --manual 标志)
+- **现有脚本**: @release.sh 处理版本、构建、Git 等流程
+- **需要 AI 增强**: GitHub Release 描述 + changelog 生成
+- **优化目标**: 脚本处理基础流程，AI 专注内容生成
 
 ## Your Task
 
-**角色 (Role):** 您是专业的**发布自动化工程师 (Release Automation Engineer)**，负责执行完整的软件发布流程，确保每次发布都安全、可靠、符合标准。
+**角色**: 发布内容生成专家，专注 AI 驱动的 Release 描述和 changelog
 
-**核心使命 (Mission):** 自动化执行完整的发布流程，从版本号管理到最终的 GitHub Release 创建，确保发布过程的一致性和可靠性。
+**目标**: 分步骤执行，确保 AI 生成的内容质量
 
-**设计哲学 (Design Philosophy):**
+**执行流程**:
 
-1. **安全第一**: 严格的前置检查，确保发布环境安全
-2. **自动化完整**: 最小化人工干预，全流程自动化
-3. **错误处理**: 完善的错误检测和回滚机制
-4. **用户友好**: 清晰的进度反馈和状态提示
-
-**执行要求 (Requirements):**
-
-1. **参数处理**:
-   - 无参数：自动递增 patch 版本 (+0.0.1)
-   - 版本号参数：使用指定版本号 (如: 1.0.3)
-   - --manual 标志：跳过 GitHub Release 自动创建
-
-2. **前置检查**:
-   - 验证版本号格式 (x.y.z)
-   - 检查 Git 工作区状态（必须干净）
-   - 确认当前在 main 分支
-   - 验证 GitHub CLI 认证状态（非手动模式）
-
-3. **版本更新**:
-   - 更新 package.json 中的版本号
-   - 更新 wxt.config.ts 中的版本号
-   - 执行 TypeScript 类型检查
-
-4. **构建流程**:
-   - 构建 Chrome 版本 (`npm run build`)
-   - 构建 Firefox 版本 (`npm run build:firefox`)
-   - 创建发布包 (`npm run zip` + `npm run zip:firefox`)
-
-5. **Git 操作**:
-   - 提交版本更新文件
-   - 创建版本标签 (v$VERSION)
-   - 推送到远程仓库
-
-6. **GitHub Release**:
-   - 自动生成 Release 说明
-   - 创建 GitHub Release
-   - 上传扩展包文件
-
-**质量标准 (Quality Standards):**
-
-- **安全性**: 所有操作前进行必要的安全检查
-- **可靠性**: 遇到错误立即停止，避免不一致状态
-- **完整性**: 确保所有步骤成功执行
-- **可追溯**: 提供详细的执行日志和状态反馈
-
-**错误处理机制:**
-
-- 任何步骤失败立即退出
-- 提供清晰的错误信息和解决建议
-- 对于可恢复的错误，提供重试选项
-
-**执行步骤:**
-
-1. **初始化检查**:
+1. **执行构建和版本管理**:
    ```bash
-   # 解析参数并验证版本号格式
-   # 检查 Git 状态和分支
-   # 验证 GitHub CLI 认证（自动模式）
+   ./release.sh $ARGUMENTS --manual
    ```
+   （使用 --manual 跳过 GitHub Release 创建）
 
-2. **版本管理**:
-   ```bash
-   # 获取当前版本或自动递增
-   # 更新 package.json 和 wxt.config.ts
-   # 执行类型检查确保代码质量
-   ```
+2. **AI 生成 Release 内容**:
+   - 分析 commits 生成 changelog
+   - 创建完整的 Release 描述
+   - 使用 `gh release create` 创建正式 Release
 
-3. **构建和打包**:
-   ```bash
-   npm run compile  # TypeScript 类型检查
-   npm run build    # Chrome 版本构建
-   npm run build:firefox  # Firefox 版本构建
-   npm run zip      # Chrome 打包
-   npm run zip:firefox    # Firefox 打包
-   ```
+**Release 内容生成规则**:
 
-4. **版本控制**:
-   ```bash
-   git add package.json wxt.config.ts
-   git commit -m "feat: 更新版本至 v$VERSION"
-   git tag -a "v$VERSION" -m "Release v$VERSION"
-   git push origin main
-   git push origin "v$VERSION"
-   ```
+**Commit 分析**:
+- **范围**: 从上个版本标签到当前版本的所有 commits
+- **分类**:
+  - `feat:` → ✨ **新功能**
+  - `fix:` → 🐛 **问题修复** 
+  - `docs:` → 📝 **文档更新**
+  - `style:` → 💄 **样式优化**
+  - `refactor:` → ♻️ **代码重构**
+  - `perf:` → ⚡ **性能提升**
+  - `test:` → ✅ **测试完善**
+  - `chore:` → 🔧 **工程维护**
 
-5. **GitHub Release**:
-   ```bash
-   # 生成 Release 说明
-   # 创建 GitHub Release
-   # 上传扩展包文件
-   ```
+**Release 描述格式**:
+```markdown
+## CC Usage Extension v{VERSION}
 
-**输出信息:**
+### 🚀 本次更新
 
-- 实时显示执行进度和状态
-- 发布包文件位置信息
-- GitHub Release 链接
-- 错误信息和解决建议
+{AI 生成的更新内容摘要}
 
-**支持的命令格式:**
+### 📋 详细变更
 
-- `$ARGUMENTS` 为空：自动递增版本发布
-- `$ARGUMENTS = "1.0.3"`：指定版本号发布
-- `$ARGUMENTS = "1.0.3 --manual"`：手动模式发布
-- `$ARGUMENTS = "--manual"`：自动递增版本 + 手动模式
+{分类的 changelog}
 
-立即开始执行完整的发布自动化流程。
+### 📦 下载安装
+
+- **Chrome**: [扩展包下载](release-link)
+- **Firefox**: [扩展包下载](release-link)
+
+### 💡 安装说明
+1. 下载对应浏览器的扩展包并解压
+2. 打开浏览器扩展管理页面
+3. 启用"开发者模式"
+4. 点击"加载已解压的扩展程序"
+```
+
+**GitHub Release 创建**:
+- 使用 `gh release create` 命令
+- 自动上传 Chrome + Firefox 扩展包
+- 包含 AI 生成的完整描述
+
+**错误处理**:
+- release.sh 失败时立即停止
+- changelog 生成失败时提供手动模式建议
+
+**性能优化**:
+- 最小化 LLM 交互次数
+- 复用脚本的所有验证和构建逻辑
+- 只在关键步骤提供用户反馈
+
+立即执行优化后的发布流程。
