@@ -104,7 +104,8 @@ export async function resetNotificationStatus(): Promise<void> {
 
 // 历史数据管理
 const MAX_HISTORICAL_DAYS = 30; // 保留最近30天的数据
-const MAX_DATA_POINTS_PER_DAY = 24; // 每天最多保留24个数据点（每小时一个）
+const MAX_DATA_POINTS_PER_DAY = 288; // 每天最多保留288个数据点（5分钟一个）
+const DATA_DEDUP_INTERVAL = 5 * 60 * 1000; // 数据去重间隔：5分钟（用于计算真实消费速率）
 
 export async function getHistoricalData(): Promise<HistoricalData> {
   try {
@@ -133,9 +134,9 @@ export async function addHistoricalDataPoint(point: Omit<HistoricalDataPoint, 't
     const historical = await getHistoricalData();
     const now = Date.now();
     
-    // 检查是否在同一小时内已经有数据点
-    const oneHourAgo = now - (60 * 60 * 1000);
-    const recentPoint = historical.data.find(p => p.timestamp > oneHourAgo);
+    // 检查是否在5分钟内已经有数据点（从1小时改为5分钟）
+    const fiveMinutesAgo = now - DATA_DEDUP_INTERVAL;
+    const recentPoint = historical.data.find(p => p.timestamp > fiveMinutesAgo);
     
     if (recentPoint) {
       // 更新现有数据点而不是添加新的
@@ -154,6 +155,19 @@ export async function addHistoricalDataPoint(point: Omit<HistoricalDataPoint, 't
     // 清理旧数据
     const cutoffTime = now - (MAX_HISTORICAL_DAYS * 24 * 60 * 60 * 1000);
     historical.data = historical.data.filter(p => p.timestamp > cutoffTime);
+    
+    // 限制每天的数据点数量
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = today.getTime();
+    const todayData = historical.data.filter(p => p.timestamp >= todayTimestamp);
+    
+    if (todayData.length > MAX_DATA_POINTS_PER_DAY) {
+      // 保留最新的 MAX_DATA_POINTS_PER_DAY 个数据点
+      const otherData = historical.data.filter(p => p.timestamp < todayTimestamp);
+      const keepData = todayData.slice(-MAX_DATA_POINTS_PER_DAY);
+      historical.data = [...otherData, ...keepData];
+    }
     
     // 按时间戳排序
     historical.data.sort((a, b) => a.timestamp - b.timestamp);

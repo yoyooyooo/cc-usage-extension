@@ -26,7 +26,7 @@ This is a browser extension project built with WXT (Web eXTension) framework and
 
 **Type Checking:**
 
-- `npm run compile` - Run TypeScript type checking without emitting files
+- `npm run typecheck` - Run TypeScript type checking without emitting files
 
 **Setup:**
 

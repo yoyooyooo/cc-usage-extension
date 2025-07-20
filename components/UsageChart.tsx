@@ -16,6 +16,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { TrendingUp, Calendar, Download, Clock } from 'lucide-react';
 import { DailyTimelineChart } from './DailyTimelineChart';
+import { DailyTimelineChartWithRate } from './DailyTimelineChartWithRate';
+import { ChartErrorBoundary } from './ChartErrorBoundary';
+import { RateFeatureToggle } from './RateFeatureToggle';
 import type { HistoricalDataPoint } from '../types';
 
 interface UsageChartProps {
@@ -27,9 +30,10 @@ type ViewMode = '24hours' | '7days' | '30days' | 'all';
 type ChartType = 'daily' | 'monthly' | 'both';
 
 export function UsageChart({ data, onClose }: UsageChartProps) {
-  const [viewMode, setViewMode] = React.useState<ViewMode>('7days');
+  const [viewMode, setViewMode] = React.useState<ViewMode>('24hours'); // 改为默认24小时
   const [chartType, setChartType] = React.useState<ChartType>('both');
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
+  const [showRate, setShowRate] = React.useState<boolean>(false); // 速率功能开关
 
   // 过滤数据
   const filteredData = React.useMemo(() => {
@@ -64,8 +68,12 @@ export function UsageChart({ data, onClose }: UsageChartProps) {
       }));
   }, [data, viewMode]);
 
-  // 导出数据
+  // 导出数据为CSV
   const handleExport = () => {
+    if (!data || data.length === 0) {
+      return;
+    }
+    
     const csvContent = [
       ['时间', '日度预算', '日度花费', '日度使用率', '月度预算', '月度花费', '月度使用率'],
       ...filteredData.map(point => [
@@ -119,7 +127,7 @@ export function UsageChart({ data, onClose }: UsageChartProps) {
               className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
             >
               <Download className="mr-1 h-3 w-3" />
-              导出
+              导出CSV
             </Button>
             {onClose && (
               <Button
@@ -136,14 +144,15 @@ export function UsageChart({ data, onClose }: UsageChartProps) {
       </CardHeader>
       <CardContent>
         {/* 控制选项 */}
-        <div className="flex items-center space-x-3 mb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
           <Select value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
             <SelectTrigger className="w-32 bg-gray-700 border-gray-600 text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-gray-700 border-gray-600">
               <SelectItem value="24hours" className="text-white hover:bg-gray-600">
-                24小时
+                24小时 (推荐)
               </SelectItem>
               <SelectItem value="7days" className="text-white hover:bg-gray-600">
                 最近7天
@@ -215,11 +224,26 @@ export function UsageChart({ data, onClose }: UsageChartProps) {
               </Button>
             </div>
           )}
+          </div>
+          
+          {/* 速率功能开关 - 仅在24小时视图显示 */}
+          {viewMode === '24hours' && (
+            <RateFeatureToggle 
+              enabled={showRate}
+              onToggle={setShowRate}
+            />
+          )}
         </div>
 
         {/* 图表 */}
         {viewMode === '24hours' ? (
-          <DailyTimelineChart data={data} selectedDate={selectedDate} />
+          <ChartErrorBoundary>
+            {showRate ? (
+              <DailyTimelineChartWithRate data={data} selectedDate={selectedDate} />
+            ) : (
+              <DailyTimelineChart data={data} selectedDate={selectedDate} />
+            )}
+          </ChartErrorBoundary>
         ) : (
           <>
             <div className="h-64">

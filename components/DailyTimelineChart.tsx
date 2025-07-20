@@ -11,7 +11,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, TrendingUp } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import type { HistoricalDataPoint } from '../types';
 
 interface DailyTimelineChartProps {
@@ -38,7 +38,7 @@ export function DailyTimelineChart({ data, selectedDate = new Date() }: DailyTim
 
     // 过滤选定日期的数据
     const dayData = data.filter(
-      point => point.timestamp >= startOfDay.getTime() && point.timestamp <= endOfDay.getTime()
+      (point) => point.timestamp >= startOfDay.getTime() && point.timestamp <= endOfDay.getTime()
     );
 
     // 初始化24小时数据
@@ -55,7 +55,7 @@ export function DailyTimelineChart({ data, selectedDate = new Date() }: DailyTim
     }
 
     // 填充实际数据
-    dayData.forEach(point => {
+    dayData.forEach((point) => {
       const hour = new Date(point.timestamp).getHours();
       const existing = hourlyMap.get(hour);
       if (existing) {
@@ -78,17 +78,17 @@ export function DailyTimelineChart({ data, selectedDate = new Date() }: DailyTim
 
   // 计算统计信息
   const stats = React.useMemo(() => {
-    const activeHours = hourlyData.filter(h => h.spent > 0);
-    const totalSpent = activeHours.reduce((sum, h) => sum + h.spent, 0);
+    const activeHours = hourlyData.filter((h) => h.spent > 0);
+    const latestSpent = activeHours.length > 0 ? activeHours[activeHours.length - 1].spent : 0;
     const peakHour = hourlyData.reduce((max, h) => (h.spent > max.spent ? h : max), hourlyData[0]);
-    const avgSpentPerActiveHour = activeHours.length > 0 ? totalSpent / activeHours.length : 0;
+    const avgUsage = activeHours.length > 0 ? activeHours.reduce((sum, h) => sum + h.usage, 0) / activeHours.length : 0;
 
     return {
-      totalSpent,
+      latestSpent,
       activeHours: activeHours.length,
       peakHour: peakHour.hour,
       peakSpent: peakHour.spent,
-      avgSpentPerActiveHour,
+      avgUsage,
     };
   }, [hourlyData]);
 
@@ -99,7 +99,7 @@ export function DailyTimelineChart({ data, selectedDate = new Date() }: DailyTim
       return (
         <div className="bg-gray-800 p-3 rounded shadow-lg border border-gray-700">
           <p className="text-white font-semibold">{label}</p>
-          <p className="text-gray-400 text-sm">花费: ${data.spent.toFixed(2)}</p>
+          <p className="text-gray-400 text-sm">累计花费: ${data.spent.toFixed(2)}</p>
           <p className="text-gray-400 text-sm">预算: ${data.budget.toFixed(2)}</p>
           <p className="text-gray-400 text-sm">使用率: {data.usage.toFixed(1)}%</p>
         </div>
@@ -132,21 +132,16 @@ export function DailyTimelineChart({ data, selectedDate = new Date() }: DailyTim
         {/* 图表 */}
         <div className="h-64 mb-4">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={hourlyData} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+            <BarChart data={hourlyData} margin={{ top: 10, right: 30, bottom: 10, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis 
-                dataKey="hourLabel" 
-                stroke="#9CA3AF"
-                tick={{ fill: '#9CA3AF', fontSize: 11 }}
-                interval={2}
-              />
-              <YAxis 
+              <XAxis dataKey="hourLabel" stroke="#9CA3AF" tick={{ fill: '#9CA3AF', fontSize: 11 }} interval={2} />
+              <YAxis
                 stroke="#9CA3AF"
                 tick={{ fill: '#9CA3AF', fontSize: 12 }}
-                label={{ value: '花费 ($)', angle: -90, position: 'insideLeft', fill: '#9CA3AF' }}
+                label={{ value: '累计花费 ($)', angle: -90, position: 'insideLeft', fill: '#9CA3AF' }}
               />
               <Tooltip content={<CustomTooltip />} />
-              
+
               {/* 当前时间标记（仅今天显示） */}
               {isToday && (
                 <ReferenceLine
@@ -156,8 +151,8 @@ export function DailyTimelineChart({ data, selectedDate = new Date() }: DailyTim
                   label={{ value: '当前', fill: '#60A5FA', fontSize: 12 }}
                 />
               )}
-              
-              <Bar dataKey="spent" radius={[4, 4, 0, 0]}>
+
+              <Bar dataKey="spent" radius={[4, 4, 0, 0]} name="累计花费">
                 {hourlyData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={getBarColor(entry.usage)} />
                 ))}
@@ -175,49 +170,45 @@ export function DailyTimelineChart({ data, selectedDate = new Date() }: DailyTim
                 <div className="text-lg font-semibold text-white">{stats.activeHours}小时</div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-gray-400">平均每小时</div>
-                <div className="text-sm font-medium text-blue-400">
-                  ${stats.avgSpentPerActiveHour.toFixed(2)}
-                </div>
+                <div className="text-xs text-gray-400">当前花费</div>
+                <div className="text-sm font-medium text-blue-400">${stats.latestSpent.toFixed(2)}</div>
               </div>
             </div>
           </div>
-          
+
           <div className="bg-gray-700 rounded p-3">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xs text-gray-400">高峰时段</div>
-                <div className="text-lg font-semibold text-white">
-                  {stats.peakHour.toString().padStart(2, '0')}:00
-                </div>
+                <div className="text-lg font-semibold text-white">{stats.peakHour.toString().padStart(2, '0')}:00</div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-gray-400">高峰花费</div>
-                <div className="text-sm font-medium text-orange-400">
-                  ${stats.peakSpent.toFixed(2)}
-                </div>
+                <div className="text-xs text-gray-400">平均使用率</div>
+                <div className="text-sm font-medium text-green-400">{stats.avgUsage.toFixed(1)}%</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* 图例 */}
-        <div className="mt-3 flex items-center justify-center space-x-4 text-xs">
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-green-500 rounded mr-1"></div>
-            <span className="text-gray-400">正常 (≤60%)</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-yellow-300 rounded mr-1"></div>
-            <span className="text-gray-400">偏高 (60-80%)</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-amber-500 rounded mr-1"></div>
-            <span className="text-gray-400">警告 (80-100%)</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-red-500 rounded mr-1"></div>
-            <span className="text-gray-400">超支 (&gt;100%)</span>
+        <div className="mt-3">
+          <div className="flex items-center justify-center space-x-4 text-xs">
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-green-500 rounded mr-1"></div>
+              <span className="text-gray-400">正常 (≤60%)</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-yellow-300 rounded mr-1"></div>
+              <span className="text-gray-400">偏高 (60-80%)</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-amber-500 rounded mr-1"></div>
+              <span className="text-gray-400">警告 (80-100%)</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-red-500 rounded mr-1"></div>
+              <span className="text-gray-400">{`超支 (>100%)`}</span>
+            </div>
           </div>
         </div>
       </CardContent>

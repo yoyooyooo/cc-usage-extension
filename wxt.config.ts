@@ -13,6 +13,7 @@ export default defineConfig({
     description: 'Claude Code 使用情况查询插件 - 智能预算管理，实时消费追踪',
     version: '1.2.2',
     permissions: ['storage', 'notifications', 'alarms'],
+    host_permissions: ['<all_urls>'], // 添加网络请求权限
     action: {
       default_title: 'CC Usage Monitor',
       default_popup: 'popup.html',

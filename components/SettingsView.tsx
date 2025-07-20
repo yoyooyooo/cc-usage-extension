@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Eye, EyeOff, TestTube, RefreshCw, Clock, Sparkles, RotateCcw, Bell, BellOff, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, TestTube, RefreshCw, Clock, Sparkles, RotateCcw, Bell, BellOff, AlertTriangle, Database, Download, Upload, Trash2 } from 'lucide-react';
 import { getWorkTimeDescription } from '../utils/workingTime';
 import { getMatchQualityDescription } from '../utils/fieldMatcher';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -23,7 +23,7 @@ interface SettingsViewProps {
   // 移除了 onSaveComplete 和 onSaveClick，因为现在通过 store 管理
 }
 
-export const SettingsView = ({ }: SettingsViewProps) => {
+export const SettingsView = (_props: SettingsViewProps) => {
   // 使用 Zustand store 替代所有本地状态
   const {
     settings,
@@ -41,16 +41,46 @@ export const SettingsView = ({ }: SettingsViewProps) => {
     updateMonthlyThreshold,
     updateAlertThreshold,
     rematchFields,
-    updateSettings
+    updateSettings,
+    exportData,
+    importData,
+    clearData
   } = useSettingsStore();
 
   const [showToken, setShowToken] = useState(false);
+  const [clearConfirm, setClearConfirm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 移除本地的 loadSettings 和 handleSave 方法，使用 store 中的方法
 
   useEffect(() => {
     initializeStore();
   }, [initializeStore]);
+
+  // 数据管理功能处理函数
+  const handleExport = async () => {
+    await exportData();
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      await importData(file);
+      // 清空 input 以便可以再次选择相同文件
+      event.target.value = '';
+    }
+  };
+
+  const handleClear = async () => {
+    if (clearConfirm) {
+      await clearData();
+      setClearConfirm(false);
+    } else {
+      setClearConfirm(true);
+      // 3秒后自动取消确认状态
+      setTimeout(() => setClearConfirm(false), 3000);
+    }
+  };
 
   // 移除 useImperativeHandle，不再需要暴露方法给父组件
 
@@ -466,6 +496,73 @@ export const SettingsView = ({ }: SettingsViewProps) => {
           </CardContent>
         </Card>
       )}
+
+      {/* 数据管理 */}
+      <Card className="bg-gray-800 border-gray-700">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base text-white flex items-center">
+            <Database className="mr-2 h-4 w-4 text-blue-400" />
+            数据管理
+          </CardTitle>
+          <CardDescription className="text-sm text-gray-400">
+            导出、导入或清空所有设置和历史数据
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* 操作按钮 */}
+          <div className="flex gap-2 flex-wrap">
+            <Button 
+              onClick={handleExport} 
+              variant="outline" 
+              size="sm"
+              className="flex-1 min-w-[120px] bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+            >
+              <Download className="mr-2 h-3 w-3" />
+              导出数据
+            </Button>
+            
+            <Button 
+              onClick={() => fileInputRef.current?.click()} 
+              variant="outline" 
+              size="sm"
+              className="flex-1 min-w-[120px] bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+            >
+              <Upload className="mr-2 h-3 w-3" />
+              导入数据
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleImport}
+              className="hidden"
+            />
+            
+            <Button 
+              onClick={handleClear} 
+              variant={clearConfirm ? "destructive" : "outline"} 
+              size="sm"
+              className={`flex-1 min-w-[120px] ${
+                clearConfirm 
+                  ? "bg-red-600 hover:bg-red-700 text-white" 
+                  : "bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+              }`}
+            >
+              <Trash2 className="mr-2 h-3 w-3" />
+              {clearConfirm ? '确认清空' : '清空数据'}
+            </Button>
+          </div>
+          
+          {/* 操作说明 */}
+          <div className="text-xs text-gray-500 bg-gray-700 p-2 rounded">
+            <div className="mb-1">💡 说明：</div>
+            <div>• 导出包含所有设置和历史数据，保存为 JSON 文件</div>
+            <div>• 导入会完全覆盖现有的所有数据</div>
+            <div>• 清空数据操作不可恢复，请谨慎使用</div>
+            <div>• 建议定期导出数据作为备份</div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

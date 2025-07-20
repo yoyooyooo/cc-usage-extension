@@ -4,6 +4,7 @@ import type { PluginSettings, ApiResponse } from '../types';
 import { testApiConnection, fetchApiData, extractDataValue } from '../utils/api';
 import { autoMatchFields, type AutoMatchResult } from '../utils/fieldMatcher';
 import { addHistoricalDataPoint } from '../utils/storage';
+import { exportAllData, importAllData, clearAllData } from '../utils/dataManagement';
 
 interface SettingsState {
   // 核心数据状态
@@ -42,6 +43,11 @@ interface SettingsState {
   rematchFields: () => void;
   canSave: () => boolean;
   resetState: () => void;
+  
+  // 数据管理功能
+  exportData: () => Promise<void>;
+  importData: (file: File) => Promise<void>;
+  clearData: () => Promise<void>;
 }
 
 // Chrome Storage 操作的内部实现
@@ -131,7 +137,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       if (!savedSettings.apiUrl || !savedSettings.token) {
         set({ error: '请先在设置页面配置 API' });
       } else {
-        const hasValidMapping = Object.values(savedSettings.mapping).some((v) => v.trim());
+        // 改进的验证逻辑：至少需要有日度或月度的花费字段之一被映射
+        const hasValidMapping = (
+          savedSettings.mapping.dailySpent?.trim() || 
+          savedSettings.mapping.monthlySpent?.trim()
+        ) && (
+          savedSettings.mapping.dailyBudget?.trim() || 
+          savedSettings.mapping.monthlyBudget?.trim()
+        );
+        
         if (!hasValidMapping) {
           set({ error: '请先在设置页面配置字段映射' });
         } else {
@@ -253,15 +267,44 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ saving: true });
     try {
       await saveSettingsToStorage(settings);
-      toast.success('配置保存成功！');
       
       // 保存成功后，检查配置是否完整，如果完整则自动加载数据
-      const hasValidMapping = Object.values(settings.mapping).some(v => v.trim());
+      // 改进的验证逻辑：至少需要有日度或月度的花费字段之一被映射
+      const hasSpentMapping = !!(settings.mapping.dailySpent?.trim() || settings.mapping.monthlySpent?.trim());
+      const hasBudgetMapping = !!(settings.mapping.dailyBudget?.trim() || settings.mapping.monthlyBudget?.trim());
+      const hasValidMapping = hasSpentMapping && hasBudgetMapping;
+      
+      // 调试信息：记录映射状态
+      console.log('字段映射状态检查:', {
+        dailySpent: settings.mapping.dailySpent || '未映射',
+        dailyBudget: settings.mapping.dailyBudget || '未映射',
+        monthlySpent: settings.mapping.monthlySpent || '未映射',
+        monthlyBudget: settings.mapping.monthlyBudget || '未映射',
+        hasSpentMapping,
+        hasBudgetMapping,
+        hasValidMapping
+      });
+      
       if (hasValidMapping) {
         // 异步加载数据，不等待结果
         setTimeout(() => {
           get().loadApiData();
         }, 0);
+        toast.success('配置保存成功！正在加载数据...');
+      } else {
+        if (!hasSpentMapping) {
+          toast('配置保存成功！但缺少花费字段映射，请检查日度或月度花费字段。', {
+            icon: '⚠️',
+            duration: 4000,
+          });
+        } else if (!hasBudgetMapping) {
+          toast('配置保存成功！但缺少预算字段映射，请检查日度或月度预算字段。', {
+            icon: '⚠️',
+            duration: 4000,
+          });
+        } else {
+          toast.success('配置保存成功！请确保已正确映射预算和花费字段。');
+        }
       }
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -295,12 +338,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         const matchResult = autoMatchFields(result.fieldKeys);
         set({ autoMatchResult: matchResult });
         
-        // 自动应用高置信度匹配（85%以上）
+        // 自动应用高置信度匹配（70%以上，降低阈值提高匹配成功率）
         const autoAppliedMatches: string[] = [];
         const newMapping = { ...settings.mapping };
         
         Object.entries(matchResult).forEach(([targetField, match]) => {
-          if (match && match.confidence >= 85) {
+          if (match && match.confidence >= 70) {
             newMapping[targetField as keyof PluginSettings['mapping']] = match.field;
             autoAppliedMatches.push(`${targetField} → ${match.field}`);
           }
@@ -514,5 +557,43 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       hasTestedConnection: false,
       autoMatchResult: {},
     });
+  },
+
+  // 导出数据
+  exportData: async () => {
+    try {
+      await exportAllData();
+      toast.success('数据导出成功！');
+    } catch (error) {
+      console.error('导出数据失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '导出数据失败';
+      toast.error(errorMessage);
+    }
+  },
+
+  // 导入数据
+  importData: async (file: File) => {
+    try {
+      await importAllData(file);
+      // 重新初始化 store 以加载新数据
+      await get().initializeStore();
+      toast.success('数据导入成功！');
+    } catch (error) {
+      console.error('导入数据失败:', error);
+      toast.error(error instanceof Error ? error.message : '导入数据失败');
+    }
+  },
+
+  // 清空数据
+  clearData: async () => {
+    try {
+      await clearAllData();
+      get().resetState();
+      await get().initializeStore();
+      toast.success('数据已清空！');
+    } catch (error) {
+      console.error('清空数据失败:', error);
+      toast.error(error instanceof Error ? error.message : '清空数据失败');
+    }
   },
 }));

@@ -62,3 +62,19 @@ export interface HistoricalData {
   data: HistoricalDataPoint[];
   lastUpdated: number;
 }
+
+// 数据导出相关类型
+export interface ExportData {
+  exportVersion: string;
+  exportDate: string;
+  settings: PluginSettings;
+  historicalData: HistoricalDataPoint[];
+  metadata: {
+    totalDataPoints: number;
+    dateRange: {
+      start: string;
+      end: string;
+    };
+    exportedAt: number;
+  };
+}
