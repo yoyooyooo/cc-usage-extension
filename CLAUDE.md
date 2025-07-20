@@ -61,12 +61,14 @@ The project follows WXT's file-based routing system:
 ## State Management Architecture (v1.2.2+)
 
 **Zustand-Centered Design:**
+
 - All application state is managed in Zustand stores
 - Components are purely presentational and focus on rendering
 - Single source of truth for all data (settings, API data, UI states)
 - Automatic persistence to Chrome Storage
 
 **Key Principles:**
+
 - Components subscribe to store state and never manage local state for data
 - All async operations (API calls, storage) are handled in store actions
 - Loading states, errors, and data are all centralized in stores
@@ -75,12 +77,14 @@ The project follows WXT's file-based routing system:
 ## Request Optimization (v1.2.2+)
 
 **Intelligent Request Management:**
+
 - Request deduplication using AbortController
 - Request locking mechanism prevents concurrent duplicate calls
 - Extended cache duration (5 minutes) to reduce API load
 - Automatic cache invalidation and refresh capabilities
 
 **Performance Features:**
+
 - API request manager with built-in deduplication
 - Selective useEffect dependencies to prevent unnecessary re-renders
 - Optimized page transitions without forced refreshes
@@ -100,7 +104,10 @@ When adding shadcn/ui components using `npx shadcn add [component-name]`, the ge
 每个文件的代码行数不能超过 350 行
 
 # important-instruction-reminders
+
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.
 ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+NEVER proactively create documentation files (\*.md) or README files. Only create documentation files if explicitly requested by the User.
+
+当开发过程中识别出新老数据可能存在不兼容的情况，需要及时的指出来，避免出现导入导出功能突然失效。

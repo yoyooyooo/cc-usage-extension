@@ -78,3 +78,34 @@ export interface ExportData {
     exportedAt: number;
   };
 }
+
+// 热力图相关类型
+export interface HeatmapDataPoint {
+  day: number;          // 0-6 (周日到周六)
+  hour: number;         // 0-23 (24小时制)
+  value: number;        // 消费金额
+  intensity: number;    // 热力强度 0-1 (用于颜色映射)
+  timestamp: number;    // 具体时间戳
+  hasData: boolean;     // 是否有实际数据
+  dayLabel: string;     // 星期标签，如 "周一"
+  hourLabel: string;    // 小时标签，如 "09:00"
+}
+
+export interface WeeklyHeatmapData {
+  periodStart: Date;    // 时间段开始日期
+  periodEnd: Date;      // 时间段结束日期
+  data: HeatmapDataPoint[][]; // [day][hour] 二维数组结构
+  maxValue: number;     // 最大消费值
+  minValue: number;     // 最小消费值
+  totalPoints: number;  // 总数据点数
+  hasAnyData: boolean;  // 是否有任何数据
+  dayCount: number;     // 实际天数（7天/14天/30天）
+  dailyLabels: string[]; // 每日标签数组
+}
+
+export interface HeatmapSettings {
+  timeRange: 'week' | '2weeks' | 'month'; // 时间范围
+  colorScheme: 'blue' | 'green' | 'red';  // 颜色方案
+  showWeekends: boolean;  // 是否显示周末
+  showEmptyHours: boolean; // 是否显示无数据的小时
+}

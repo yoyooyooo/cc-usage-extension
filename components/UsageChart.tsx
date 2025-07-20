@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { TrendingUp, Calendar, Download, Clock } from 'lucide-react';
 import { DailyTimelineChart } from './DailyTimelineChart';
 import { DailyTimelineChartWithRate } from './DailyTimelineChartWithRate';
+import { HeatmapChart } from './charts/HeatmapChart';
 import { ChartErrorBoundary } from './ChartErrorBoundary';
 import { RateFeatureToggle } from './RateFeatureToggle';
 import type { HistoricalDataPoint } from '../types';
@@ -26,7 +27,7 @@ interface UsageChartProps {
   onClose?: () => void;
 }
 
-type ViewMode = '24hours' | '7days' | '30days' | 'all';
+type ViewMode = '24hours' | 'heatmap' | '7days' | '30days' | 'all';
 type ChartType = 'daily' | 'monthly' | 'both';
 
 export function UsageChart({ data, onClose }: UsageChartProps) {
@@ -38,7 +39,7 @@ export function UsageChart({ data, onClose }: UsageChartProps) {
   // 过滤数据
   const filteredData = React.useMemo(() => {
     if (!data || data.length === 0) return [];
-    if (viewMode === '24hours') return []; // 24小时视图不使用此数据
+    if (viewMode === '24hours' || viewMode === 'heatmap') return []; // 24小时和热力图视图不使用此数据
 
     const now = Date.now();
     let cutoffTime = 0;
@@ -152,7 +153,10 @@ export function UsageChart({ data, onClose }: UsageChartProps) {
             </SelectTrigger>
             <SelectContent className="bg-gray-700 border-gray-600">
               <SelectItem value="24hours" className="text-white hover:bg-gray-600">
-                24小时 (推荐)
+                24小时
+              </SelectItem>
+              <SelectItem value="heatmap" className="text-white hover:bg-gray-600">
+                热力图
               </SelectItem>
               <SelectItem value="7days" className="text-white hover:bg-gray-600">
                 最近7天
@@ -166,7 +170,7 @@ export function UsageChart({ data, onClose }: UsageChartProps) {
             </SelectContent>
           </Select>
 
-          {viewMode !== '24hours' && (
+          {viewMode !== '24hours' && viewMode !== 'heatmap' && (
             <Select value={chartType} onValueChange={(value) => setChartType(value as ChartType)}>
               <SelectTrigger className="w-32 bg-gray-700 border-gray-600 text-white">
                 <SelectValue />
@@ -243,6 +247,10 @@ export function UsageChart({ data, onClose }: UsageChartProps) {
             ) : (
               <DailyTimelineChart data={data} selectedDate={selectedDate} />
             )}
+          </ChartErrorBoundary>
+        ) : viewMode === 'heatmap' ? (
+          <ChartErrorBoundary>
+            <HeatmapChart data={data} />
           </ChartErrorBoundary>
         ) : (
           <>
