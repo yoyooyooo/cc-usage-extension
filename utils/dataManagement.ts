@@ -1,4 +1,5 @@
 import type { PluginSettings, HistoricalData, ExportData } from '../types';
+import { browser } from 'wxt/browser';
 import { getHistoricalData, clearHistoricalData } from './storage';
 
 const EXPORT_VERSION = '1.0.0';
@@ -9,7 +10,7 @@ const EXPORT_VERSION = '1.0.0';
 export async function exportAllData(): Promise<void> {
   try {
     // 获取设置数据
-    const settingsResult = await chrome.storage.sync.get('plugin_settings');
+    const settingsResult = await browser.storage.sync.get('plugin_settings');
     const settings: PluginSettings = settingsResult.plugin_settings;
     
     if (!settings) {
@@ -91,18 +92,18 @@ export async function importAllData(file: File): Promise<void> {
       throw new Error('数据格式不符合要求，请确保是从本应用导出的数据文件');
     }
     
-    // 保存设置数据到 chrome.storage.sync
-    await chrome.storage.sync.set({ plugin_settings: importData.settings });
+    // 保存设置数据到 browser.storage.sync
+    await browser.storage.sync.set({ plugin_settings: importData.settings });
     
-    // 保存历史数据到 chrome.storage.local
+    // 保存历史数据到 browser.storage.local
     const historicalData: HistoricalData = {
       data: importData.historicalData,
       lastUpdated: Date.now(),
     };
-    await chrome.storage.local.set({ historical_data: historicalData });
+    await browser.storage.local.set({ historical_data: historicalData });
     
     // 清除缓存
-    await chrome.storage.sync.remove('api_cache');
+    await browser.storage.sync.remove('api_cache');
     
   } catch (error) {
     console.error('导入数据失败:', error);
@@ -116,16 +117,16 @@ export async function importAllData(file: File): Promise<void> {
 export async function clearAllData(): Promise<void> {
   try {
     // 清空设置数据
-    await chrome.storage.sync.remove('plugin_settings');
+    await browser.storage.sync.remove('plugin_settings');
     
     // 清空历史数据
     await clearHistoricalData();
     
     // 清空缓存
-    await chrome.storage.sync.remove('api_cache');
+    await browser.storage.sync.remove('api_cache');
     
     // 清空通知状态
-    await chrome.storage.sync.remove('notification_status');
+    await browser.storage.sync.remove('notification_status');
     
   } catch (error) {
     console.error('清空数据失败:', error);

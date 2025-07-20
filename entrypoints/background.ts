@@ -1,4 +1,5 @@
-// Background script 现在需要直接访问 Chrome storage，因为不能使用 Zustand store
+// Background script 现在需要直接访问 Browser storage，因为不能使用 Zustand store
+import { browser, type Browser } from 'wxt/browser';
 import { fetchApiData } from '../utils/api';
 import type { PluginSettings } from '../types';
 import { 
@@ -21,7 +22,7 @@ async function getSettings(): Promise<PluginSettings> {
   };
 
   try {
-    const result = await chrome.storage.sync.get('plugin_settings');
+    const result = await browser.storage.sync.get('plugin_settings');
     if (result.plugin_settings) {
       return { ...defaultSettings, ...result.plugin_settings };
     }
@@ -42,13 +43,13 @@ export default defineBackground(() => {
   browser.runtime.onInstalled.addListener(handleInstalled);
 
   // 监听定时器事件
-  if (chrome.alarms) {
-    chrome.alarms.onAlarm.addListener(handleAlarmTrigger);
+  if (browser.alarms) {
+    browser.alarms.onAlarm.addListener(handleAlarmTrigger);
   }
 
   // 监听设置变更，更新定时器
-  if (chrome.storage) {
-    chrome.storage.onChanged.addListener(handleStorageChange);
+  if (browser.storage) {
+    browser.storage.onChanged.addListener(handleStorageChange);
   }
 });
 
@@ -60,7 +61,7 @@ async function handleStartup(): Promise<void> {
 }
 
 // 处理扩展安装
-async function handleInstalled(details: chrome.runtime.InstalledDetails): Promise<void> {
+async function handleInstalled(details: Browser.runtime.InstalledDetails): Promise<void> {
   console.log('Extension installed/updated:', details.reason);
   
   if (details.reason === 'install') {
@@ -106,8 +107,8 @@ async function createBudgetAlarm(intervalMinutes: number): Promise<void> {
     await clearBudgetAlarm();
     
     // 创建新的定时器
-    if (chrome.alarms) {
-      chrome.alarms.create(ALARM_NAME, {
+    if (browser.alarms) {
+      browser.alarms.create(ALARM_NAME, {
         delayInMinutes: intervalMinutes,
         periodInMinutes: intervalMinutes,
       });
@@ -121,8 +122,8 @@ async function createBudgetAlarm(intervalMinutes: number): Promise<void> {
 // 清除定时器
 async function clearBudgetAlarm(): Promise<void> {
   try {
-    if (chrome.alarms) {
-      chrome.alarms.clear(ALARM_NAME);
+    if (browser.alarms) {
+      browser.alarms.clear(ALARM_NAME);
       console.log('Budget alarm cleared');
     }
   } catch (error) {
@@ -131,7 +132,7 @@ async function clearBudgetAlarm(): Promise<void> {
 }
 
 // 处理定时器触发
-async function handleAlarmTrigger(alarm: chrome.alarms.Alarm): Promise<void> {
+async function handleAlarmTrigger(alarm: Browser.alarms.Alarm): Promise<void> {
   if (alarm.name === ALARM_NAME) {
     console.log('Budget check alarm triggered');
     await performBudgetCheck();
@@ -224,7 +225,7 @@ function getFieldValue(data: any, fieldPath: string): number {
 
 // 处理存储变更事件
 async function handleStorageChange(
-  changes: { [key: string]: chrome.storage.StorageChange },
+  changes: { [key: string]: Browser.storage.StorageChange },
   areaName: string
 ): Promise<void> {
   if (areaName !== 'sync') return;
@@ -244,21 +245,21 @@ async function checkForNewDay(): Promise<void> {
     const currentMonth = `${now.getFullYear()}-${now.getMonth()}`;
     
     // 检查是否存储了上次检查的日期
-    const result = await chrome.storage.local.get(['lastCheckDate', 'lastCheckMonth']);
+    const result = await browser.storage.local.get(['lastCheckDate', 'lastCheckMonth']);
     const lastCheckDate = result.lastCheckDate;
     const lastCheckMonth = result.lastCheckMonth;
     
     // 如果是新的一天，重置日度通知状态
     if (lastCheckDate !== today) {
       await resetDailyNotificationStatus();
-      await chrome.storage.local.set({ lastCheckDate: today });
+      await browser.storage.local.set({ lastCheckDate: today });
       console.log('New day detected, daily notification status reset');
     }
     
     // 如果是新的月份，重置月度通知状态
     if (lastCheckMonth !== currentMonth) {
       await resetMonthlyNotificationStatus();
-      await chrome.storage.local.set({ lastCheckMonth: currentMonth });
+      await browser.storage.local.set({ lastCheckMonth: currentMonth });
       console.log('New month detected, monthly notification status reset');
     }
   } catch (error) {

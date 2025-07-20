@@ -62,7 +62,8 @@ cc-usage/
 │  ├─ api.ts             # API 相关函数
 │  ├─ storage.ts         # 存储相关函数（历史数据、缓存、通知）
 │  ├─ fieldMatcher.ts    # 智能字段匹配引擎
-│  └─ workingTime.ts     # 工作时间处理工具
+│  ├─ workingTime.ts     # 工作时间处理工具
+│  └─ dataManagement.ts  # 数据导入导出管理（v1.2.3 新增）
 ├─ lib/
 │  └─ utils.ts           # 通用工具函数
 ├─ public/               # 静态资源

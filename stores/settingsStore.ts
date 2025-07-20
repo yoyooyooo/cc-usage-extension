@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { browser } from 'wxt/browser';
 import { toast } from 'react-hot-toast';
 import type { PluginSettings, ApiResponse } from '../types';
 import { testApiConnection, fetchApiData, extractDataValue } from '../utils/api';
@@ -52,7 +53,7 @@ interface SettingsState {
 
 // Chrome Storage 操作的内部实现
 async function loadSettingsFromStorage(): Promise<PluginSettings> {
-  const result = await chrome.storage.sync.get('plugin_settings');
+  const result = await browser.storage.sync.get('plugin_settings');
   
   if (result.plugin_settings) {
     return {
@@ -70,7 +71,7 @@ async function loadSettingsFromStorage(): Promise<PluginSettings> {
 }
 
 async function saveSettingsToStorage(settings: PluginSettings): Promise<void> {
-  await chrome.storage.sync.set({ plugin_settings: settings });
+  await browser.storage.sync.set({ plugin_settings: settings });
 }
 
 const defaultSettings: PluginSettings = {

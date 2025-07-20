@@ -1,4 +1,5 @@
 import type { CachedData, HistoricalData, HistoricalDataPoint } from '../types';
+import { browser } from 'wxt/browser';
 
 const STORAGE_KEYS = {
   CACHE: 'api_cache',
@@ -10,7 +11,7 @@ const STORAGE_KEYS = {
 
 export async function getCachedData(): Promise<CachedData | null> {
   try {
-    const result = await chrome.storage.sync.get(STORAGE_KEYS.CACHE);
+    const result = await browser.storage.sync.get(STORAGE_KEYS.CACHE);
     const cached = result[STORAGE_KEYS.CACHE];
     
     if (!cached) return null;
@@ -22,7 +23,7 @@ export async function getCachedData(): Promise<CachedData | null> {
     
     if (cacheAge > CACHE_DURATION) {
       // 清除过期缓存
-      await chrome.storage.sync.remove(STORAGE_KEYS.CACHE);
+      await browser.storage.sync.remove(STORAGE_KEYS.CACHE);
       return null;
     }
     
@@ -39,7 +40,7 @@ export async function setCachedData(data: any): Promise<void> {
       data,
       timestamp: Date.now(),
     };
-    await chrome.storage.sync.set({ [STORAGE_KEYS.CACHE]: cachedData });
+    await browser.storage.sync.set({ [STORAGE_KEYS.CACHE]: cachedData });
   } catch (error) {
     console.error('Error setting cached data:', error);
     throw error;
@@ -48,7 +49,7 @@ export async function setCachedData(data: any): Promise<void> {
 
 export async function clearCache(): Promise<void> {
   try {
-    await chrome.storage.sync.remove(STORAGE_KEYS.CACHE);
+    await browser.storage.sync.remove(STORAGE_KEYS.CACHE);
   } catch (error) {
     console.error('Error clearing cache:', error);
   }
@@ -63,7 +64,7 @@ export interface NotificationStatus {
 
 export async function getNotificationStatus(): Promise<NotificationStatus> {
   try {
-    const result = await chrome.storage.sync.get(STORAGE_KEYS.NOTIFICATION_STATUS);
+    const result = await browser.storage.sync.get(STORAGE_KEYS.NOTIFICATION_STATUS);
     const status = result[STORAGE_KEYS.NOTIFICATION_STATUS];
     
     if (!status) {
@@ -87,7 +88,7 @@ export async function getNotificationStatus(): Promise<NotificationStatus> {
 
 export async function setNotificationStatus(status: NotificationStatus): Promise<void> {
   try {
-    await chrome.storage.sync.set({ [STORAGE_KEYS.NOTIFICATION_STATUS]: status });
+    await browser.storage.sync.set({ [STORAGE_KEYS.NOTIFICATION_STATUS]: status });
   } catch (error) {
     console.error('Error setting notification status:', error);
     throw error;
@@ -96,7 +97,7 @@ export async function setNotificationStatus(status: NotificationStatus): Promise
 
 export async function resetNotificationStatus(): Promise<void> {
   try {
-    await chrome.storage.sync.remove(STORAGE_KEYS.NOTIFICATION_STATUS);
+    await browser.storage.sync.remove(STORAGE_KEYS.NOTIFICATION_STATUS);
   } catch (error) {
     console.error('Error resetting notification status:', error);
   }
@@ -109,7 +110,7 @@ const DATA_DEDUP_INTERVAL = 5 * 60 * 1000; // 数据去重间隔：5分钟（用
 
 export async function getHistoricalData(): Promise<HistoricalData> {
   try {
-    const result = await chrome.storage.local.get(STORAGE_KEYS.HISTORICAL_DATA);
+    const result = await browser.storage.local.get(STORAGE_KEYS.HISTORICAL_DATA);
     const data = result[STORAGE_KEYS.HISTORICAL_DATA];
     
     if (!data) {
@@ -176,7 +177,7 @@ export async function addHistoricalDataPoint(point: Omit<HistoricalDataPoint, 't
     historical.lastUpdated = now;
     
     // 保存到 storage.local（容量更大）
-    await chrome.storage.local.set({ [STORAGE_KEYS.HISTORICAL_DATA]: historical });
+    await browser.storage.local.set({ [STORAGE_KEYS.HISTORICAL_DATA]: historical });
   } catch (error) {
     console.error('Error adding historical data point:', error);
     throw error;
@@ -185,7 +186,7 @@ export async function addHistoricalDataPoint(point: Omit<HistoricalDataPoint, 't
 
 export async function clearHistoricalData(): Promise<void> {
   try {
-    await chrome.storage.local.remove(STORAGE_KEYS.HISTORICAL_DATA);
+    await browser.storage.local.remove(STORAGE_KEYS.HISTORICAL_DATA);
   } catch (error) {
     console.error('Error clearing historical data:', error);
   }

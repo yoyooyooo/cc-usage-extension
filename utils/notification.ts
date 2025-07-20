@@ -1,4 +1,5 @@
 import type { NotificationStatus } from './storage';
+import { browser } from 'wxt/browser';
 import { getNotificationStatus, setNotificationStatus } from './storage';
 
 // 通知类型枚举
@@ -18,7 +19,7 @@ export interface NotificationConfig {
 // 检查通知权限
 export async function checkNotificationPermission(): Promise<boolean> {
   try {
-    if (!chrome.notifications) {
+    if (!browser.notifications) {
       console.warn('Notifications API not available');
       return false;
     }
@@ -51,16 +52,16 @@ export async function sendNotification(config: NotificationConfig): Promise<bool
     
     const notificationOptions = {
       type: 'basic' as const,
-      iconUrl: config.iconUrl || chrome.runtime.getURL('icon/128.png'),
+      iconUrl: config.iconUrl || browser.runtime.getURL('icon-128.png' as any),
       title: config.title,
       message: config.message,
       requireInteraction: false, // 通知会自动消失
     };
 
-    chrome.notifications.create(notificationId, notificationOptions, () => {
+    browser.notifications.create(notificationId, notificationOptions, () => {
       // 创建通知后的回调
-      if (chrome.runtime.lastError) {
-        console.error('Error creating notification:', chrome.runtime.lastError);
+      if (browser.runtime.lastError) {
+        console.error('Error creating notification:', browser.runtime.lastError);
       }
     });
     

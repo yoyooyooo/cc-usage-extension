@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "mcp__sequential-thinking__sequentialthinking",
-      "Bash(npm run compile:*)"
+      "Bash(npm run compile:*)",
+      "Bash(npm run typecheck:*)"
     ],
     "deny": []
   },
